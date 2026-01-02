@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_from_directory
 from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
@@ -13,7 +13,7 @@ migrate = Migrate()
 jwt = JWTManager()
 
 def create_app(config_name='default'):
-    app = Flask(__name__)
+    app = Flask(__name__, static_folder='../frontend', static_url_path='')
     
     # Load configuration
     from app.config.settings import config
@@ -60,6 +60,12 @@ def create_app(config_name='default'):
     
     @app.route('/')
     def index():
+        """Serve the frontend HTML"""
+        return send_from_directory(app.static_folder, 'index.html')
+    
+    @app.route('/api')
+    def api_info():
+        """API information endpoint"""
         return jsonify({
             'message': 'Student Management System API',
             'version': '1.0.0',
