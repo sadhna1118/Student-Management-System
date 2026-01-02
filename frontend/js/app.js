@@ -1,5 +1,8 @@
 // Student Management System - Frontend Application
-const API_BASE_URL = `${window.location.protocol}//${window.location.host}/api`;
+
+// Wait for config to load
+let API_BASE_URL = '';
+let isDemoMode = false;
 
 // Global state
 let currentUser = null;
@@ -9,6 +12,17 @@ let studentModal = null;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Load configuration
+    if (window.APP_CONFIG) {
+        API_BASE_URL = window.APP_CONFIG.apiBaseUrl;
+        isDemoMode = window.APP_CONFIG.isDemoMode;
+    }
+    
+    // Show demo mode banner if in demo mode
+    if (isDemoMode) {
+        showDemoBanner();
+    }
+    
     // Check if user is logged in
     const token = localStorage.getItem('accessToken');
     const user = localStorage.getItem('currentUser');
@@ -42,31 +56,39 @@ async function login(event) {
     loginError.style.display = 'none';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
-        });
+        let data;
         
-        const data = await response.json();
-        
-        if (response.ok) {
-            accessToken = data.access_token;
-            currentUser = data.user;
-            
-            localStorage.setItem('accessToken', accessToken);
-            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-            
-            showMainApp();
+        if (isDemoMode) {
+            // Use demo API
+            data = await window.DEMO_API.login(username, password);
         } else {
-            loginError.textContent = data.message || 'Invalid credentials';
-            loginError.style.display = 'block';
+            // Use real API
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
+            
+            data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.message || 'Invalid credentials');
+            }
         }
+        
+        accessToken = data.access_token;
+        currentUser = data.user;
+        
+        localStorage.setItem('accessToken', accessToken);
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
+        showMainApp();
+        
     } catch (error) {
         console.error('Login error:', error);
-        loginError.textContent = 'Connection error. Please check if the backend server is running.';
+        loginError.textContent = error.message || 'Connection error. Please check if the backend server is running.';
         loginError.style.display = 'block';
     } finally {
         loginBtn.disabled = false;
@@ -145,45 +167,53 @@ function showProfile() {
 // Dashboard Functions
 async function loadDashboardData() {
     try {
-        // Load students
-        const studentsResponse = await fetch(`${API_BASE_URL}/students`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
+        let studentsData, usersData;
         
-        if (studentsResponse.ok) {
-            const studentsData = await studentsResponse.json();
-            const students = studentsData.students || [];
+        if (isDemoMode) {
+            studentsData = await window.DEMO_API.getStudents();
+            if (currentUser.role && currentUser.role.name === 'admin') {
+                usersData = await window.DEMO_API.getUsers();
+            }
+        } else {
+            const studentsResponse = await fetch(`${API_BASE_URL}/students`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
             
+            if (studentsResponse.ok) {
+                studentsData = await studentsResponse.json();
+            }
+            
+            if (currentUser.role && currentUser.role.name === 'admin') {
+                const usersResponse = await fetch(`${API_BASE_URL}/admin/users`, {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                
+                if (usersResponse.ok) {
+                    usersData = await usersResponse.json();
+                }
+            }
+        }
+        
+        // Process students data
+        if (studentsData) {
+            const students = studentsData.students || [];
             document.getElementById('totalStudents').textContent = students.length;
             
-            // Count by gender
             const male = students.filter(s => s.gender === 'Male').length;
             const female = students.filter(s => s.gender === 'Female').length;
             
             document.getElementById('maleStudents').textContent = male;
             document.getElementById('femaleStudents').textContent = female;
             
-            // Recent students (last 5)
             const recent = students.slice(0, 5);
             displayRecentStudents(recent);
         }
         
-        // Load users (admin only)
-        if (currentUser.role && currentUser.role.name === 'admin') {
-            const usersResponse = await fetch(`${API_BASE_URL}/admin/users`, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`
-                }
-            });
-            
-            if (usersResponse.ok) {
-                const usersData = await usersResponse.json();
-                const users = usersData.users || [];
-                const activeUsers = users.filter(u => u.is_active).length;
-                document.getElementById('activeUsers').textContent = activeUsers;
-            }
+        // Process users data
+        if (usersData) {
+            const users = usersData.users || [];
+            const activeUsers = users.filter(u => u.is_active).length;
+            document.getElementById('activeUsers').textContent = activeUsers;
         } else {
             document.getElementById('activeUsers').textContent = '-';
         }
@@ -215,20 +245,27 @@ function displayRecentStudents(students) {
 // Students Functions
 async function loadStudents() {
     try {
-        const response = await fetch(`${API_BASE_URL}/students`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
+        let data;
         
-        if (response.ok) {
-            const data = await response.json();
-            allStudents = data.students || [];
-            displayStudents(allStudents);
+        if (isDemoMode) {
+            data = await window.DEMO_API.getStudents();
         } else {
-            document.getElementById('studentsTable').innerHTML = 
-                '<tr><td colspan="7" class="text-center text-danger">Failed to load students</td></tr>';
+            const response = await fetch(`${API_BASE_URL}/students`, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load students');
+            }
+            
+            data = await response.json();
         }
+        
+        allStudents = data.students || [];
+        displayStudents(allStudents);
+        
     } catch (error) {
         console.error('Error loading students:', error);
         document.getElementById('studentsTable').innerHTML = 
@@ -377,30 +414,39 @@ async function saveStudent(event) {
             data.password = document.getElementById('studentPassword').value;
         }
         
-        const url = isEdit ? `${API_BASE_URL}/students/${studentId}` : `${API_BASE_URL}/students`;
-        const method = isEdit ? 'PUT' : 'POST';
+        let result;
         
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            studentModal.hide();
-            loadStudents();
-            showNotification('success', isEdit ? 'Student updated successfully!' : 'Student created successfully!');
+        if (isDemoMode) {
+            result = isEdit ? 
+                await window.DEMO_API.updateStudent(parseInt(studentId), data) :
+                await window.DEMO_API.createStudent(data);
         } else {
-            alert(result.message || 'Failed to save student');
+            const url = isEdit ? `${API_BASE_URL}/students/${studentId}` : `${API_BASE_URL}/students`;
+            const method = isEdit ? 'PUT' : 'POST';
+            
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+            
+            result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to save student');
+            }
         }
+        
+        studentModal.hide();
+        loadStudents();
+        showNotification('success', isEdit ? 'Student updated successfully!' : 'Student created successfully!');
+        
     } catch (error) {
         console.error('Error saving student:', error);
-        alert('Error saving student');
+        alert(error.message || 'Error saving student');
     } finally {
         saveBtn.disabled = false;
         saveBtn.innerHTML = 'Save Student';
@@ -412,44 +458,56 @@ async function deleteStudent(id) {
     if (!confirm('Are you sure you want to delete this student?')) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/students/${id}`, {
-            method: 'DELETE',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
-        
-        if (response.ok) {
-            loadStudents();
-            showNotification('success', 'Student deleted successfully!');
+        if (isDemoMode) {
+            await window.DEMO_API.deleteStudent(id);
         } else {
-            const data = await response.json();
-            alert(data.message || 'Failed to delete student');
+            const response = await fetch(`${API_BASE_URL}/students/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+            
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.message || 'Failed to delete student');
+            }
         }
+        
+        loadStudents();
+        showNotification('success', 'Student deleted successfully!');
+        
     } catch (error) {
         console.error('Error deleting student:', error);
-        alert('Error deleting student');
+        alert(error.message || 'Error deleting student');
     }
 }
 
 // Users Functions (Admin Only)
 async function loadUsers() {
     try {
-        const response = await fetch(`${API_BASE_URL}/admin/users`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
+        let data;
         
-        if (response.ok) {
-            const data = await response.json();
-            displayUsers(data.users || []);
+        if (isDemoMode) {
+            data = await window.DEMO_API.getUsers();
         } else {
-            document.getElementById('usersTable').innerHTML = 
-                '<tr><td colspan="6" class="text-center text-danger">Failed to load users</td></tr>';
+            const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load users');
+            }
+            
+            data = await response.json();
         }
+        
+        displayUsers(data.users || []);
+        
     } catch (error) {
         console.error('Error loading users:', error);
+        document.getElementById('usersTable').innerHTML = 
+            '<tr><td colspan="6" class="text-center text-danger">Failed to load users</td></tr>';
     }
 }
 
@@ -512,30 +570,34 @@ async function toggleUserStatus(userId, activate) {
 // Reports Functions
 async function generateReport(format) {
     try {
+        if (isDemoMode) {
+            alert('Report generation is not available in demo mode.\n\nTo use this feature, please:\n1. Deploy the backend to Render, Railway, or Heroku\n2. Update the API URL in frontend/js/config.js');
+            return;
+        }
+        
         const response = await fetch(`${API_BASE_URL}/reports/students?format=${format}`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
+            headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `students_report.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            showNotification('success', 'Report downloaded successfully!');
-        } else {
-            alert('Failed to generate report');
+        if (!response.ok) {
+            throw new Error('Failed to generate report');
         }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `students_report.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showNotification('success', 'Report downloaded successfully!');
+        
     } catch (error) {
         console.error('Error generating report:', error);
-        alert('Error generating report');
+        alert(error.message || 'Error generating report');
     }
 }
 
@@ -543,41 +605,47 @@ async function showAnalytics() {
     document.getElementById('analyticsSection').style.display = 'block';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/reports/analytics`, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`
-            }
-        });
+        let data;
         
-        if (response.ok) {
-            const data = await response.json();
-            const analytics = data.analytics || {};
-            
-            const html = `
-                <div class="row">
-                    <div class="col-md-4">
-                        <h6>Total Students</h6>
-                        <h3>${analytics.total_students || 0}</h3>
-                    </div>
-                    <div class="col-md-4">
-                        <h6>Recent Admissions</h6>
-                        <h3>${analytics.recent_admissions || 0}</h3>
-                    </div>
-                    <div class="col-md-4">
-                        <h6>Gender Distribution</h6>
-                        <ul class="list-unstyled">
-                            ${Object.entries(analytics.gender_distribution || {}).map(([gender, count]) => 
-                                `<li>${gender}: ${count}</li>`
-                            ).join('')}
-                        </ul>
-                    </div>
-                </div>
-            `;
-            
-            document.getElementById('analyticsData').innerHTML = html;
+        if (isDemoMode) {
+            data = await window.DEMO_API.getAnalytics();
         } else {
-            document.getElementById('analyticsData').innerHTML = '<p class="text-danger">Failed to load analytics</p>';
+            const response = await fetch(`${API_BASE_URL}/reports/analytics`, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to load analytics');
+            }
+            
+            data = await response.json();
         }
+        
+        const analytics = data.analytics || {};
+        
+        const html = `
+            <div class="row">
+                <div class="col-md-4">
+                    <h6>Total Students</h6>
+                    <h3>${analytics.total_students || 0}</h3>
+                </div>
+                <div class="col-md-4">
+                    <h6>Recent Admissions</h6>
+                    <h3>${analytics.recent_admissions || 0}</h3>
+                </div>
+                <div class="col-md-4">
+                    <h6>Gender Distribution</h6>
+                    <ul class="list-unstyled">
+                        ${Object.entries(analytics.gender_distribution || {}).map(([gender, count]) => 
+                            `<li>${gender}: ${count}</li>`
+                        ).join('')}
+                    </ul>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('analyticsData').innerHTML = html;
+        
     } catch (error) {
         console.error('Error loading analytics:', error);
         document.getElementById('analyticsData').innerHTML = '<p class="text-danger">Error loading analytics</p>';
@@ -594,4 +662,17 @@ function formatDate(dateString) {
 function showNotification(type, message) {
     // Simple notification - can be enhanced with a toast library
     alert(message);
+}
+
+// Demo mode banner
+function showDemoBanner() {
+    const banner = document.createElement('div');
+    banner.className = 'alert alert-info alert-dismissible fade show m-0 rounded-0';
+    banner.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; z-index: 9999; text-align: center;';
+    banner.innerHTML = `
+        <strong>Demo Mode:</strong> You're viewing a demo version. 
+        To use full features, please deploy the backend and update the API URL in config.js.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.insertBefore(banner, document.body.firstChild);
 }

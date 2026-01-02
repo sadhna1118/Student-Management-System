@@ -1,5 +1,6 @@
 # Student Management System
 
+[![Live Demo](https://img.shields.io/badge/demo-live-success)](https://sadhna1118.github.io/Student-Management-System/)
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sadhna1118/Student-Management-System)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/downloads/)
 [![Flask Version](https://img.shields.io/badge/flask-2.3.3-green)](https://flask.palletsprojects.com/)
@@ -7,13 +8,30 @@
 
 A comprehensive student management system built with Python Flask, featuring user authentication, role-based access control, student record management, and report generation.
 
+## 🌐 Live Demo
+
+**Try it now:** [https://sadhna1118.github.io/Student-Management-System/](https://sadhna1118.github.io/Student-Management-System/)
+
+**Demo Credentials:**
+- Admin: `admin` / `admin123`
+- Teacher: `teacher1` / `teacher123`
+
 ## 🚀 Quick Deploy
 
-**Deploy to live server in 5 minutes:**
+### Option 1: Frontend Only (GitHub Pages) - FASTEST
+**Deploy frontend in 2 minutes:**
+1. Fork this repository
+2. Go to Settings → Pages
+3. Set Source to "GitHub Actions"
+4. Your demo is live!
 
+See [GITHUB_PAGES_DEPLOYMENT.md](GITHUB_PAGES_DEPLOYMENT.md) for details.
+
+### Option 2: Full Stack (Render) - COMPLETE
+**Deploy complete app in 5 minutes:**
 1. Click the **"Deploy to Render"** button above
 2. Create free Render account
-3. Your app will be live!
+3. Your full app will be live!
 
 For detailed deployment instructions, see [DEPLOYMENT_LIVE.md](DEPLOYMENT_LIVE.md)
 
