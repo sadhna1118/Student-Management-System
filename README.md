@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Student Management System
 
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://sadhna1118.github.io/Student-Management-System/)
@@ -422,3 +423,6 @@ For issues and questions:
 ---
 
 **Built with ❤️ using Flask**
+=======
+# Student-Management-System-project
+>>>>>>> bec5e08d1e3e26dd12b637a870028c8a04bdeaff
