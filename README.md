@@ -68,7 +68,7 @@ Ready for cloud deployment (Render / Railway / AWS)
 
 
 
-📂 Project Structure
+
 Student-Management-System/
 │
 ├── app/
@@ -86,6 +86,7 @@ Student-Management-System/
 ├── docker-compose.yml
 ├── .env.example
 └── README.md
+
 
 🚀 Getting Started
 1️⃣ Clone the Repository
