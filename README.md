@@ -55,16 +55,19 @@ Docker & Docker Compose support
 
 Ready for cloud deployment (Render / Railway / AWS)
 
-🛠 Tech Stack
-Category	Technology
-Backend	Python, Flask
-Database	SQLite / PostgreSQL
-ORM	SQLAlchemy
-Auth	JWT
-Frontend	HTML, CSS, JavaScript
-Reports	PDF, Excel
-DevOps	Docker, Docker Compose
-Tools	Git, GitHub
+| Category | Technology             |
+| -------- | ---------------------- |
+| Backend  | Python, Flask          |
+| Database | SQLite / PostgreSQL    |
+| ORM      | SQLAlchemy             |
+| Auth     | JWT                    |
+| Frontend | HTML, CSS, JavaScript  |
+| Reports  | PDF, Excel             |
+| DevOps   | Docker, Docker Compose |
+| Tools    | Git, GitHub            |
+
+
+
 📂 Project Structure
 Student-Management-System/
 │
